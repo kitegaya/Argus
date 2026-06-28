@@ -1,0 +1,7 @@
+{
+  "alertname": "PodCrashLooping",
+  "severity": "critical",
+  "playbook": "restart-deployment",
+  "source": "rules",
+  "postmortem_summary": "At 2:45 PM, our system detected that one of our pods was repeatedly crashing and restarting, triggering a critical alert. The SRE team intervened by following the \"restart-deployment\" playbook, which resolved the issue within 10 minutes. The root cause of the crash loop is still under investigation, but the swift response prevented any noticeable impact on our users, and the system is now stable."
+}

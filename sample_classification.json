@@ -1,0 +1,6 @@
+{
+  "alertname": "PodCrashLooping",
+  "severity": "critical",
+  "playbook": "restart-deployment",
+  "source": "rules"
+}
