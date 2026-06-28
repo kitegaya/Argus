@@ -1,0 +1,52 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argus-alert-rules
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: argus.rules
+      interval: 15s
+      rules:
+
+        # ── Rule 1: Pod Crash Looping ──────────────────────
+        - alert: PodCrashLooping
+          expr: |
+            rate(kube_pod_container_status_restarts_total{namespace="argus"}[5m]) * 300 > 2
+          for: 1m
+          labels:
+            severity: critical
+            namespace: argus
+          annotations:
+            summary: "Pod {{ $labels.pod }} is crash looping"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted more than 2 times in 5 minutes"
+
+        # ── Rule 2: High Memory Usage ──────────────────────
+        - alert: HighMemoryUsage
+          expr: |
+            (container_memory_working_set_bytes{namespace="argus", container!=""}
+            /
+            container_spec_memory_limit_bytes{namespace="argus", container!=""}) * 100 > 80
+          for: 1m
+          labels:
+            severity: warning
+            namespace: argus
+          annotations:
+            summary: "High memory usage in pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 80% of its memory limit"
+
+        # ── Rule 3: High CPU Usage ─────────────────────────
+        - alert: HighCPUUsage
+          expr: |
+            (rate(container_cpu_usage_seconds_total{namespace="argus", container!=""}[5m])
+            /
+            container_spec_cpu_quota{namespace="argus", container!=""} * container_spec_cpu_period{namespace="argus", container!=""}) * 100 > 80
+          for: 1m
+          labels:
+            severity: warning
+            namespace: argus
+          annotations:
+            summary: "High CPU usage in pod {{ $labels.pod }}"
+            description: "Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 80% of its CPU limit"
