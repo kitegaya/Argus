@@ -1,0 +1,10 @@
+- name: Kill a pod to simulate a crash
+  hosts: localhost
+  tasks:
+    - name: Delete target pod
+      kubernetes.core.k8s:
+        kind: Pod
+        namespace: argus
+        label_selectors:
+          - app=payment-service
+        state: absent

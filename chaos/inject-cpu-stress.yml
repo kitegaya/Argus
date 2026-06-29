@@ -1,0 +1,12 @@
+- name: Scale deployment to simulate high load
+  hosts: localhost
+  tasks:
+    - name: Scale up replicas to stress CPU
+      kubernetes.core.k8s:
+        kind: Deployment
+        namespace: argus
+        name: payment-service
+        state: patched
+        definition:
+          spec:
+            replicas: 20
