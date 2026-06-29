@@ -8,40 +8,33 @@
     scale_increment: 1
   tasks:
     - name: Get current replica count
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-      register: deploy_info
+      command: >
+        kubectl get deployment {{ deployment }} -n {{ namespace }}
+        -o jsonpath='{.spec.replicas}'
+      register: current_replicas_out
+      changed_when: false
 
     - name: Set new replica count
       set_fact:
-        current_replicas: "{{ deploy_info.resources[0].spec.replicas | int }}"
-        new_replicas: "{{ (deploy_info.resources[0].spec.replicas | int) + (scale_increment | int) }}"
+        current_replicas: "{{ current_replicas_out.stdout | int }}"
+        new_replicas: "{{ (current_replicas_out.stdout | int) + (scale_increment | int) }}"
 
     - name: Scale up deployment
-      kubernetes.core.k8s:
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-        state: patched
-        definition:
-          spec:
-            replicas: "{{ new_replicas | int }}"
+      command: >
+        kubectl scale deployment {{ deployment }}
+        --replicas={{ new_replicas }}
+        -n {{ namespace }}
+      register: scale_result
+      changed_when: true
 
     - name: Wait for rollout to complete
-      kubernetes.core.k8s_rollout_info:
-        api_version: apps/v1
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-      register: rollout
-      until: >
-        rollout.status.get('availableReplicas', 0) == rollout.status.get('replicas', 1)
-      retries: 12
-      delay: 10
+      command: >
+        kubectl rollout status deployment/{{ deployment }} -n {{ namespace }} --timeout=180s
+      register: rollout_result
+      changed_when: false
 
     - name: Report outcome
       debug:
-        msg: "Deployment {{ deployment }} scaled from {{ current_replicas }} to {{ new_replicas }} replicas."
+        msg: >-
+          Deployment {{ deployment }} scaled from {{ current_replicas }}
+          to {{ new_replicas }} replicas. {{ rollout_result.stdout }}

@@ -6,43 +6,22 @@
     namespace: "{{ alert_namespace | default('argus') }}"
     deployment: "{{ alert_deployment | default('payment-service') }}"
   tasks:
-    - name: Get current rollout history
-      kubernetes.core.k8s_info:
-        api_version: apps/v1
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-      register: deploy_info
-
-    - name: Perform rollback via undo annotation
-      kubernetes.core.k8s:
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-        state: patched
-        definition:
-          metadata:
-            annotations:
-              deployment.kubernetes.io/revision: "{{ (deploy_info.resources[0].metadata.annotations.get('deployment.kubernetes.io/revision', '1') | int) - 1 }}"
-
     - name: Trigger rollback using kubectl rollout undo
       command: >
         kubectl rollout undo deployment/{{ deployment }} -n {{ namespace }}
+      register: undo_result
       changed_when: true
 
-    - name: Wait for rollback rollout to complete
-      kubernetes.core.k8s_rollout_info:
-        api_version: apps/v1
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-      register: rollout
-      until: >
-        rollout.status.get('updatedReplicas', 0) == rollout.status.get('replicas', 1) and
-        rollout.status.get('availableReplicas', 0) == rollout.status.get('replicas', 1)
-      retries: 12
-      delay: 10
+    - name: Show rollback output
+      debug:
+        msg: "{{ undo_result.stdout }}"
+
+    - name: Wait for rollback to complete
+      command: >
+        kubectl rollout status deployment/{{ deployment }} -n {{ namespace }} --timeout=180s
+      register: rollout_result
+      changed_when: false
 
     - name: Report outcome
       debug:
-        msg: "Deployment {{ deployment }} in {{ namespace }} rolled back successfully."
+        msg: "{{ rollout_result.stdout }}"

@@ -6,32 +6,18 @@
     namespace: "{{ alert_namespace | default('argus') }}"
     deployment: "{{ alert_deployment | default('payment-service') }}"
   tasks:
-    - name: Trigger rolling restart by patching annotation
-      kubernetes.core.k8s:
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-        state: patched
-        definition:
-          spec:
-            template:
-              metadata:
-                annotations:
-                  kubectl.kubernetes.io/restartedAt: "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}"
+    - name: Trigger rolling restart
+      command: >
+        kubectl rollout restart deployment/{{ deployment }} -n {{ namespace }}
+      register: restart_result
+      changed_when: true
 
     - name: Wait for rollout to complete
-      kubernetes.core.k8s_rollout_info:
-        api_version: apps/v1
-        kind: Deployment
-        namespace: "{{ namespace }}"
-        name: "{{ deployment }}"
-      register: rollout
-      until: >
-        rollout.status.get('updatedReplicas', 0) == rollout.status.get('replicas', 1) and
-        rollout.status.get('availableReplicas', 0) == rollout.status.get('replicas', 1)
-      retries: 12
-      delay: 10
+      command: >
+        kubectl rollout status deployment/{{ deployment }} -n {{ namespace }} --timeout=180s
+      register: rollout_result
+      changed_when: false
 
     - name: Report outcome
       debug:
-        msg: "Deployment {{ deployment }} in {{ namespace }} restarted successfully."
+        msg: "{{ rollout_result.stdout }}"

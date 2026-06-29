@@ -39,3 +39,8 @@ if __name__ == '__main__':
         postmortem = json.load(f)
 
     store(postmortem)
+
+    # Write enriched postmortem (with incident_id + timestamp) back to disk
+    with open(args.postmortem, 'w') as f:
+        json.dump(postmortem, f, indent=2)
+    print(f'Postmortem updated on disk: {args.postmortem}')
