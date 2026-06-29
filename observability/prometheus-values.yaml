@@ -1,0 +1,25 @@
+# Minimal values file - keep resource usage low for laptop
+prometheus:
+  prometheusSpec:
+    retention: 1d
+    resources:
+      requests:
+        memory: 400Mi
+      limits:
+        memory: 800Mi
+
+grafana:
+  adminPassword: argus123
+  resources:
+    requests:
+      memory: 128Mi
+    limits:
+      memory: 256Mi
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        memory: 64Mi
+    limits:
+      memory: 128Mi

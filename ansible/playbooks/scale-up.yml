@@ -1,0 +1,6 @@
+- name: Scale up a deployment
+  hosts: localhost
+  tasks:
+    - name: Simulate scale-up
+      debug:
+        msg: "Scaling up payment-service (simulated)"

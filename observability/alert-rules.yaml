@@ -1,0 +1,39 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: argus-alerts
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+  - name: argus-alerts
+    rules:
+    - alert: HighMemoryUsage
+      expr: |
+        (container_memory_working_set_bytes{namespace='argus'}
+        / container_spec_memory_limit_bytes{namespace='argus'}) > 0.9
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.pod }} memory usage above 90%'
+
+    - alert: PodCrashLooping
+      expr: |
+        rate(kube_pod_container_status_restarts_total{namespace='argus'}[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: '{{ $labels.pod }} is crash-looping'
+
+    - alert: HighCPU
+      expr: |
+        rate(container_cpu_usage_seconds_total{namespace='argus'}[5m])
+        / container_spec_cpu_quota{namespace='argus'} * 100000 > 80
+      for: 1m
+      labels:
+        severity: warning
+      annotations:
+        summary: '{{ $labels.pod }} CPU above 80%'
