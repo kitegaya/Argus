@@ -1,10 +1,7 @@
-import argparse, json, os
-from openai import OpenAI
+import argparse
+import json
+import os
 
-client = OpenAI(
-    api_key=os.environ.get('GROQ_API_KEY', ''),
-    base_url='https://api.groq.com/openai/v1',
-)
 
 FALLBACK = (
     'Incident: {alertname} (severity: {severity}). '
@@ -12,10 +9,27 @@ FALLBACK = (
     'AI summary unavailable — check classification.json for details.'
 )
 
+
+def _get_client():
+    """Lazy-init the Groq/OpenAI client — avoids crash when key is absent."""
+    api_key = os.environ.get('GROQ_API_KEY', '')
+    if not api_key:
+        raise EnvironmentError('GROQ_API_KEY is not set')
+    from openai import OpenAI
+    return OpenAI(
+        api_key=api_key,
+        base_url='https://api.groq.com/openai/v1',
+    )
+
+
 def generate(classification: dict) -> str:
-    prompt = f'''Write a 3-sentence incident postmortem for an SRE Slack channel. Be specific and plain-English, no jargon.
-Data: {json.dumps(classification)}'''
+    prompt = (
+        'Write a 3-sentence incident postmortem for an SRE Slack channel. '
+        'Be specific and plain-English, no jargon.\n'
+        f'Data: {json.dumps(classification)}'
+    )
     try:
+        client   = _get_client()
         response = client.chat.completions.create(
             model='llama-3.3-70b-versatile',
             messages=[{'role': 'user', 'content': prompt}],
@@ -23,12 +37,13 @@ Data: {json.dumps(classification)}'''
         )
         return response.choices[0].message.content.strip()
     except Exception:
-        return FALLBACK.format(**classification)
+        return FALLBACK.format(**{k: classification.get(k, '') for k in ('alertname', 'severity', 'playbook')})
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--classification', required=True)
-    parser.add_argument('--output', required=True)
+    parser.add_argument('--output',         required=True)
     args = parser.parse_args()
 
     with open(args.classification) as f:

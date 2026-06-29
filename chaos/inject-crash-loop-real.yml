@@ -1,0 +1,18 @@
+- name: Force container to crash-loop
+  hosts: localhost
+  tasks:
+    - name: Patch deployment to use a crashing container
+      kubernetes.core.k8s:
+        kind: Deployment
+        namespace: argus
+        name: payment-service
+        state: patched
+        definition:
+          spec:
+            template:
+              spec:
+                containers:
+                - name: payment-service
+                  image: alpine:latest
+                  command: ["/bin/sh"]
+                  args: ["-c", "exit 1"]

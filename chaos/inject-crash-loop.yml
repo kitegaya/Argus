@@ -1,0 +1,24 @@
+- name: Force a crash-loop by scaling to 0 and back
+  hosts: localhost
+  tasks:
+    - name: Scale to 0 replicas
+      kubernetes.core.k8s:
+        kind: Deployment
+        namespace: argus
+        name: payment-service
+        state: patched
+        definition:
+          spec:
+            replicas: 0
+    - name: Wait 5 seconds
+      ansible.builtin.pause:
+        seconds: 5
+    - name: Scale back to 2 replicas
+      kubernetes.core.k8s:
+        kind: Deployment
+        namespace: argus
+        name: payment-service
+        state: patched
+        definition:
+          spec:
+            replicas: 2

@@ -1,18 +1,18 @@
 pipeline {
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
-        DYNAMODB_TABLE = 'argus-incidents-eslam'
-        S3_BUCKET = 'argus-reports-eslam'
-        // If you have these as Jenkins credentials, uncomment and use:
-        // GROQ_API_KEY = credentials('groq-api-key')
-        // SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
-        // Otherwise, set them as global environment variables in Jenkins
+        // Set DYNAMODB_TABLE and S3_BUCKET as Jenkins global env vars
+        // or override here after running `terraform output`.
+        DYNAMODB_TABLE    = credentials('argus-dynamodb-table')
+        S3_BUCKET         = credentials('argus-s3-bucket')
+        GROQ_API_KEY      = credentials('groq-api-key')
+        SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
     }
 
     agent any
 
     parameters {
-        string(name: 'ALERT_PAYLOAD', defaultValue: '{}', description: 'Alert from Alertmanager')
+        string(name: 'ALERT_PAYLOAD', defaultValue: '{}', description: 'Alert JSON from Alertmanager ($.alerts[0])')
     }
 
     stages {
@@ -33,7 +33,7 @@ pipeline {
                 """
                 script {
                     env.SEVERITY = sh(script: "jq -r .severity classification.json", returnStdout: true).trim()
-                    env.PLAYBOOK = sh(script: "jq -r .playbook classification.json", returnStdout: true).trim()
+                    env.PLAYBOOK  = sh(script: "jq -r .playbook classification.json", returnStdout: true).trim()
                     echo "Severity: ${env.SEVERITY} | Playbook: ${env.PLAYBOOK}"
                 }
             }
@@ -51,7 +51,11 @@ pipeline {
         stage('Remediate') {
             when { expression { env.PLAYBOOK != 'unknown' } }
             steps {
-                sh "ansible-playbook ansible/playbooks/${env.PLAYBOOK}.yml"
+                sh """
+                    ansible-playbook ansible/playbooks/${env.PLAYBOOK}.yml \\
+                        -e alert_namespace=argus \\
+                        -e alert_deployment=payment-service
+                """
             }
         }
 
@@ -76,6 +80,9 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'classification.json,postmortem.json', allowEmptyArchive: true
+        }
+        failure {
+            sh 'python3 scripts/notify_slack.py --postmortem postmortem.json || true'
         }
     }
 }

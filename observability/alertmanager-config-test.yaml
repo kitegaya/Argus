@@ -1,0 +1,22 @@
+route:
+  receiver: 'null'
+  group_by: ['alertname']
+  group_wait: 10s
+  group_interval: 1m
+  repeat_interval: 1h
+  routes:
+  - receiver: jenkins-webhook
+    matchers:
+    - alertname = "PodCrashLooping"
+  - receiver: jenkins-webhook
+    matchers:
+    - alertname = "HighMemoryUsage"
+  - receiver: jenkins-webhook
+    matchers:
+    - alertname = "HighCPU"
+receivers:
+- name: 'null'
+- name: jenkins-webhook
+  webhook_configs:
+  - url: 'http://172.20.0.1:8080/generic-webhook-trigger/invoke?token=argus-token'
+    send_resolved: false

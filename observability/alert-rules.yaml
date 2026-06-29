@@ -11,29 +11,39 @@ spec:
     rules:
     - alert: HighMemoryUsage
       expr: |
-        (container_memory_working_set_bytes{namespace='argus'}
-        / container_spec_memory_limit_bytes{namespace='argus'}) > 0.9
+        (
+          container_memory_working_set_bytes{namespace="argus", container!=""}
+          / container_spec_memory_limit_bytes{namespace="argus", container!=""}
+        ) > 0.9
       for: 1m
       labels:
         severity: warning
       annotations:
         summary: '{{ $labels.pod }} memory usage above 90%'
+        description: 'Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 90% of its memory limit.'
+        runbook_url: 'https://github.com/argus/argus/blob/main/docs/runbooks/high-memory.md'
 
     - alert: PodCrashLooping
       expr: |
-        rate(kube_pod_container_status_restarts_total{namespace='argus'}[5m]) > 0
+        rate(kube_pod_container_status_restarts_total{namespace="argus"}[5m]) > 0
       for: 1m
       labels:
         severity: critical
       annotations:
         summary: '{{ $labels.pod }} is crash-looping'
+        description: 'Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} has restarted {{ $value | humanize }} times in the last 5 minutes.'
+        runbook_url: 'https://github.com/argus/argus/blob/main/docs/runbooks/crash-looping.md'
 
     - alert: HighCPU
       expr: |
-        rate(container_cpu_usage_seconds_total{namespace='argus'}[5m])
-        / container_spec_cpu_quota{namespace='argus'} * 100000 > 80
+        (
+          rate(container_cpu_usage_seconds_total{namespace="argus", container!=""}[5m])
+          / (container_spec_cpu_quota{namespace="argus", container!=""} / container_spec_cpu_period{namespace="argus", container!=""})
+        ) > 0.8
       for: 1m
       labels:
         severity: warning
       annotations:
         summary: '{{ $labels.pod }} CPU above 80%'
+        description: 'Pod {{ $labels.pod }} in namespace {{ $labels.namespace }} is using more than 80% of its CPU limit.'
+        runbook_url: 'https://github.com/argus/argus/blob/main/docs/runbooks/high-cpu.md'

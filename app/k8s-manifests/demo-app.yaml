@@ -18,9 +18,20 @@ spec:
       labels:
         app: payment-service
     spec:
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app: payment-service
+              topologyKey: kubernetes.io/hostname
       containers:
       - name: payment-service
         image: nginx:alpine
+        ports:
+        - containerPort: 80
         resources:
           requests:
             memory: '64Mi'
@@ -28,6 +39,20 @@ spec:
           limits:
             memory: '128Mi'
             cpu: '200m'
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -47,6 +72,8 @@ spec:
       containers:
       - name: api-service
         image: nginx:alpine
+        ports:
+        - containerPort: 80
         resources:
           requests:
             memory: '64Mi'
@@ -54,3 +81,17 @@ spec:
           limits:
             memory: '128Mi'
             cpu: '200m'
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          failureThreshold: 3

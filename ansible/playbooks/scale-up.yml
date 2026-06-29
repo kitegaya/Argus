@@ -1,6 +1,47 @@
-- name: Scale up a deployment
+---
+- name: Scale up a high-CPU deployment
   hosts: localhost
+  gather_facts: false
+  vars:
+    namespace: "{{ alert_namespace | default('argus') }}"
+    deployment: "{{ alert_deployment | default('payment-service') }}"
+    scale_increment: 1
   tasks:
-    - name: Simulate scale-up
+    - name: Get current replica count
+      kubernetes.core.k8s_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ namespace }}"
+        name: "{{ deployment }}"
+      register: deploy_info
+
+    - name: Set new replica count
+      set_fact:
+        current_replicas: "{{ deploy_info.resources[0].spec.replicas | int }}"
+        new_replicas: "{{ (deploy_info.resources[0].spec.replicas | int) + (scale_increment | int) }}"
+
+    - name: Scale up deployment
+      kubernetes.core.k8s:
+        kind: Deployment
+        namespace: "{{ namespace }}"
+        name: "{{ deployment }}"
+        state: patched
+        definition:
+          spec:
+            replicas: "{{ new_replicas | int }}"
+
+    - name: Wait for rollout to complete
+      kubernetes.core.k8s_rollout_info:
+        api_version: apps/v1
+        kind: Deployment
+        namespace: "{{ namespace }}"
+        name: "{{ deployment }}"
+      register: rollout
+      until: >
+        rollout.status.get('availableReplicas', 0) == rollout.status.get('replicas', 1)
+      retries: 12
+      delay: 10
+
+    - name: Report outcome
       debug:
-        msg: "Scaling up payment-service (simulated)"
+        msg: "Deployment {{ deployment }} scaled from {{ current_replicas }} to {{ new_replicas }} replicas."

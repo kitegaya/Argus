@@ -16,6 +16,7 @@ observability:
 	helm upgrade --install prometheus prometheus-community/kube-prometheus-stack \
 		-f observability/prometheus-values.yaml -n monitoring --create-namespace
 	kubectl apply -f observability/alert-rules.yaml -n monitoring
+	kubectl apply -f observability/alertmanager-config.yaml -n monitoring
 
 jenkins:
 	docker compose -f jenkins/jenkins-docker-compose.yml up -d
