@@ -1,0 +1,6 @@
+- name: Restart a crash-looping deployment
+  hosts: localhost
+  tasks:
+    - name: Simulate restart
+      debug:
+        msg: "Restarting payment-service deployment (simulated)"

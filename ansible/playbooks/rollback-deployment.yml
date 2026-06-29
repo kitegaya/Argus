@@ -1,0 +1,6 @@
+- name: Roll back a deployment
+  hosts: localhost
+  tasks:
+    - name: Simulate rollback
+      debug:
+        msg: "Rolling back payment-service (simulated)"

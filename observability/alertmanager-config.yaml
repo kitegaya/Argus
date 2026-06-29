@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: alertmanager-prometheus-kube-prometheus-alertmanager
+  namespace: monitoring
+type: Opaque
+stringData:
+  alertmanager.yaml: |
+    route:
+      receiver: jenkins-webhook
+    receivers:
+    - name: jenkins-webhook
+      webhook_configs:
+      - url: 'http://host.docker.internal:8080/generic-webhook-trigger/invoke?token=argus-token'
+        send_resolved: false
