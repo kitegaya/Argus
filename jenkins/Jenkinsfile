@@ -1,4 +1,14 @@
 pipeline {
+    environment {
+        AWS_DEFAULT_REGION = 'us-east-1'
+        DYNAMODB_TABLE = 'argus-incidents-eslam'
+        S3_BUCKET = 'argus-reports-eslam'
+        // If you have these as Jenkins credentials, uncomment and use:
+        // GROQ_API_KEY = credentials('groq-api-key')
+        // SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
+        // Otherwise, set them as global environment variables in Jenkins
+    }
+
     agent any
 
     parameters {
