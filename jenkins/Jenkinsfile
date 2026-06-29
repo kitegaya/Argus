@@ -1,12 +1,8 @@
 pipeline {
     environment {
         AWS_DEFAULT_REGION = 'us-east-1'
-        // Set DYNAMODB_TABLE and S3_BUCKET as Jenkins global env vars
-        // or override here after running `terraform output`.
-        DYNAMODB_TABLE    = credentials('argus-dynamodb-table')
-        S3_BUCKET         = credentials('argus-s3-bucket')
-        GROQ_API_KEY      = credentials('groq-api-key')
-        SLACK_WEBHOOK_URL = credentials('slack-webhook-url')
+        DYNAMODB_TABLE     = 'argus-incidents-eslam'
+        S3_BUCKET          = 'argus-reports-eslam'
     }
 
     agent any
@@ -33,7 +29,7 @@ pipeline {
                 """
                 script {
                     env.SEVERITY = sh(script: "jq -r .severity classification.json", returnStdout: true).trim()
-                    env.PLAYBOOK  = sh(script: "jq -r .playbook classification.json", returnStdout: true).trim()
+                    env.PLAYBOOK = sh(script: "jq -r .playbook classification.json", returnStdout: true).trim()
                     echo "Severity: ${env.SEVERITY} | Playbook: ${env.PLAYBOOK}"
                 }
             }
@@ -80,9 +76,6 @@ pipeline {
     post {
         always {
             archiveArtifacts artifacts: 'classification.json,postmortem.json', allowEmptyArchive: true
-        }
-        failure {
-            sh 'python3 scripts/notify_slack.py --postmortem postmortem.json || true'
         }
     }
 }
